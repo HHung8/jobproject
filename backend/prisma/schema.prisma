@@ -1,0 +1,104 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String        @id @default(uuid())
+  fullname     String
+  email        String        @unique
+  phoneNumber  String
+  password     String
+  role         Role
+  profile      Profile? // Quan hệ 1-1 với bảng Profile (Một User có thể có một Profile)
+  companies    Company[] // Một User có thể liên kết đến nhiều công ty
+  jobsCreated  Job[]         @relation("UserJobs") // Mối quan hệ 1-N giữa User và Job, giúp theo dõi nhưng công việc mà user đã tao
+  applications Application[] // Mối quan hệ 1 nhiều giữa User và Application, theo dõi nhưng công việc user đã ứng tuyển
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+enum Role {
+  STUDENT
+  RECRUITER
+}
+
+model Profile {
+  id                 String   @id @default(uuid())
+  bio                String?
+  skills             String[]
+  resume             String?
+  resumeOriginalName String?
+  profilePhoto       String?  @default("")
+  user               User     @relation(fields: [userId], references: [id]) // Mối quan hệ 1 - 1 với User
+  userId             String   @unique //  Liên kết với id của bảng User, đảm bảo mỗi user chỉ có 1 profile (@unique).
+  company            Company? @relation(fields: [companyId], references: [id]) // Mối quan hệ 1-1 với company, một profile có thể thuộc về 1 công ty
+  companyId          String? // Khoá ngoại tham chiếu đến bảng Company, nếu không có giá trị sẽ là null 
+}
+
+model Company {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  description String?
+  website     String?
+  location    String?
+  logo        String?
+  user        User      @relation(fields: [userId], references: [id]) // Một user có thể tạo thiều company, một Company chỉ thuộc về một User dduy nhất
+  userId      String // khóa ngoại (foreign key), tham chiếu đến trường id trong bảng User.
+  jobs        Job[] // [] biểu thị mối quan hệ một-nhiều (One-to-Many). Một công ty có thể đăng nhiều tin tuyển dụng (Job).
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt 
+  Profile     Profile[] // [] biểu thị mối quan hệ một-nhiều (One-to-Many). Một Profile có thể thuộc về một công ty, nhưng một công ty có thể có nhiều Profile.
+}
+
+model Job {
+  id              String        @id @default(uuid())
+  title           String
+  description     String
+  requirements    String[]
+  salary          Float
+  experience      Int
+  location        String
+  jobType         String
+  position        Int
+  // Quan hệ 1 nhiều, một công ty có nhiều công việc
+  company         Company       @relation(fields: [companyId], references: [id]) // Một công việc chỉ thuộc về 1 công ty, Một công ty có thể có nhiều công việc
+  companyId       String // Khoá ngoại trỏ đến id trong bảng Company 
+  // Một nhiều: Một người có thể tạo nhiều công việc
+  createdBy       User          @relation(name: "UserJobs", fields: [createdById], references: [id]) // Một công việc chỉ có một người tạo, một người có thể tạo nhiều công việc
+  createdById     String // createdById là khóa ngoại, trỏ đến id của User.
+  applications    Application[] // Một Công việc có nhiều ứng viên One-to-Many
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+model Application {
+  id          String @id @default(uuid())
+  // Quan hệ 1 nhiều một công việc (Job) có thể có nhiều đơn ứng tuyển (Application).
+  job         Job    @relation(fields: [jobId], references: [id])
+  jobId       String 
+  // Quan hệ 1 nhiều một User có thể nộp nhiều đơn ứng tuyển
+  // fields: [applicantId]: Trường applicantId trong bảng Application đóng vai trò là khóa ngoại (foreign key).
+  // references: [id]: applicantId tham chiếu đến trường id của bảng User.
+  applicant   User   @relation(fields: [applicantId], references: [id])
+  applicantId String 
+  status ApplicationStatus @default(PENDING)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+ }
+ 
+ enum ApplicationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+ }

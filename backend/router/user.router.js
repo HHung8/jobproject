@@ -1,9 +1,11 @@
 import express from "express";
 import AuthController from "../controllers/user.controller.js";
 import isAuthenticated from "../middleware/isAuthenticated.js";
+import { singleUpload } from "../middleware/mutler.js";
 const router = express.Router();
+
 // Register a new user;
-router.post("/register", AuthController.register);
+router.post("/register", singleUpload, AuthController.register);
 // Login user;
 router.post("/login", AuthController.login);
 // logout user;
